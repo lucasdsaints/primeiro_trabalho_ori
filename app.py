@@ -1,8 +1,10 @@
+
+# Primeiro trabalho de Organização e Recuperação da Informação 2019-02
+# Alunos: Caliton Junior e Lucas Santos
+# Professor: Wendel Melo
+
 import sys
 import nltk
-
-# http://www.facom.ufu.br/~wendelmelo/ori201902/trab1_ori_2019-02.pdf
-# chave: 3,1 2,4
 
 def main ():
 	#arquivos de entrada
@@ -15,24 +17,18 @@ def main ():
 	lista_bases = txt_arq_bases.split("\n")
 
 
-	#preparando a base
-
+	# montando o indice invertido
 	i = 0
 	indice_invertido = {}
 	for base in lista_bases:
 		i = i + 1
-		# print(base)
 		texto = open(base, "r").read()
-
 		vetor_palavras = limparTexto(texto)
-
 		vetor_radicais = extrairRadicais(vetor_palavras)
-
 		geraIndiceInvertido(indice_invertido, vetor_radicais, i)
 
 	arq_indice = open("indice.txt", "a")
 
-	# print(indice_invertido)
 	for radical in indice_invertido:
 		string = '' + radical + ': '
 		for base in indice_invertido[radical]:
@@ -43,23 +39,39 @@ def main ():
 	arq_indice.close()
 
 	#---------------------------------Implementação do modelo booleano de RI-----------------------------------
-	gabarito = {}
 	arq_consulta = open(c_consulta, "r")
 	txt_arq_consulta = arq_consulta.read()
-	# print(txt_arq_consulta)
-	preparaConsulta(txt_arq_consulta )
+	vet_consultas_and_not = getVetorConsultasAndNot(txt_arq_consulta )
+	docs_resultado = set()
+	for consulta in vet_consultas_and_not:
+		docs_resultado.update(getDocsConsultaAndNot(consulta, indice_invertido, len(lista_bases)))
 
+	# escreve o arquivo de saída
+	arq_saida = open("resposta.txt", "a")
+	arq_saida.write("{num}\n".format(num=len(docs_resultado)))
+	for index in docs_resultado:
+		# print(type(lista_bases))
+		arq_saida.write("{arq}\n".format(arq=lista_bases[index-1]))
+	arq_saida.close()
 
-def preparaConsulta (str):
+def getDocsConsultaAndNot(consulta, indice, num_docs):
+	ids_docs = []
+	for i in range (0,num_docs):
+		ids_docs.append(i + 1)
+	for radical in consulta:
+		docs_indice = indice[radical].keys()
+		if consulta[radical] == 1:
+			ids_docs = [id for id in ids_docs if id in docs_indice]
+		else:
+			ids_docs = [id for id in ids_docs if id not in docs_indice]
+
+	return ids_docs
+
+def getVetorConsultasAndNot (str):
 	str = str.lower()
 	str = str.replace('!', 'not ')
 	str = str.replace('&', 'and')
 	vetor_condicoes = str.split('|')
-
-	# limpa espacos desnecessários das strings
-	# for i in range(0, len(vetor_condicoes)):
-	# 	vetor_condicoes[i] = vetor_condicoes[i].strip()
-
 
 	vetor_peso_consulta = []
 	n_dic = 0
@@ -74,17 +86,7 @@ def preparaConsulta (str):
 				vetor_peso_consulta[n_dic][extrairRadicais(vet_sub_str[i].strip())] = 1
 		n_dic += 1
 
-	print(vetor_peso_consulta) # imprima isso pra ver o que aconteceu
-	#	 condição 1         condição 2
-	# [{casa:1, amor:1}, {casa:1, mora:0}]
-	# agora com o a consulta preparada, a gnt tem que verificar para cada
-	# documento da base (variavel: lista_bases), se ele atende uma das condições
-	# olhando pro indice invertido (variavel: indice_invertido);
-	# Se atender, já escreve no arquivo de saida e acabamos o trabalho (resposta.txt)
-	# o arquivo de saida é o ultimo topico do pdf:
-	# http://www.facom.ufu.br/~wendelmelo/ori201902/trab1_ori_2019-02.pdf
-
-
+	return vetor_peso_consulta
 
 def geraIndiceInvertido (indice_invertido, radicais, n_base):
 	for radical in radicais:
@@ -95,10 +97,6 @@ def geraIndiceInvertido (indice_invertido, radicais, n_base):
 				indice_invertido[radical][n_base] = indice_invertido[radical][n_base] + 1
 			else:
 				indice_invertido[radical][n_base] = 1
-
-
-	# print(indice_invertido)
-	# print('\n')
 
 def limparTexto (str):
 	str = str.lower()
@@ -114,7 +112,7 @@ def limparTexto (str):
 	for palavra in vetor_palavras:
 		if palavra not in stopwords:
 			vetor_palavras_limpo.append(palavra)
-	
+
 	return vetor_palavras_limpo
 
 def extrairRadicais (objeto):
